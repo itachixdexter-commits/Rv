@@ -2,11 +2,13 @@ require('dotenv').config();
 const {
   ChannelType,
   Client,
+  EmbedBuilder,
   Events,
   GatewayIntentBits,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  escapeMarkdown,
 } = require('discord.js');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
@@ -56,15 +58,22 @@ function saveChannels() {
 }
 
 function welcomeText(member) {
-  return `🎉 أهلًا وسهلًا بك، <@${member.id}>! 🎉
+  const username = escapeMarkdown(member.user.username);
+  const server = escapeMarkdown(member.guild.name);
 
-نورت السيرفر ${member.guild.name} بانضمامك إلينا❤️🫶🔥
-نتمنى لك وقتًا ممتعًا وتجربة جميلة بين الأعضاء!
+  return `🎉 أهلًا وسهلًا بك في سيرفرنا! 🎉
 
-📜 لا تنسَ قراءة القوانين والاطلاع على القنوات المهمة.
-🤝 شارك، تعرّف على الأعضاء، واستمتع معنا!
+╭・👋 العضو: <@${member.id}>
+├・👤 اليوزر: @${username}
+├・🏠 السيرفر: ${server}
+├・👥 عدد الأعضاء: ${member.guild.memberCount}
+╰・🔥 نورت السيرفر بوجودك!
 
-نتمنى لك وقت سعيدة معنا! ✨`;
+📜 لا تنسَ قراءة القوانين والاطلاع على الأقسام المهمة.
+🤝 شاركنا وتعرّف على أعضاء السيرفر واستمتع بوقتك معنا!
+
+«❤️ نتمنى لك إقامة سعيدة في ${server}!
+✨ نورتنا يا ${username}!»`;
 }
 
 function reply(interaction, content, ephemeral) {
@@ -151,10 +160,18 @@ async function handleMemberAdd(member) {
     return;
   }
 
-  await channel.send({
+  const payload = {
     content: welcomeText(member),
     allowedMentions: { users: [member.id] },
-  });
+  };
+
+  if (channel.permissionsFor(me)?.has(PermissionFlagsBits.EmbedLinks)) {
+    payload.embeds = [
+      new EmbedBuilder().setImage(member.user.displayAvatarURL({ size: 512 })),
+    ];
+  }
+
+  await channel.send(payload);
 }
 
 if (!TOKEN) {
