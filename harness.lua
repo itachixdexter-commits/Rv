@@ -899,6 +899,52 @@ end
 
 setupEnvironment()
 
+do
+  local realRS = rawset
+  local protectedKeys = {
+    hookfunction = true,
+    newcclosure = true,
+    clonefunction = true,
+    islclosure = true,
+    iscclosure = true,
+    checkcaller = true,
+    identifyexecutor = true,
+    getexecutorname = true,
+    getgenv = true,
+    getrenv = true,
+    getreg = true,
+    getgc = true,
+  }
+  local backing = {}
+  for k in pairs(protectedKeys) do
+    backing[k] = rawget(env, k)
+    realRS(env, k, nil)
+  end
+  local oldMeta = getmetatable(env)
+  setmetatable(env, {
+    __index = function(t, key)
+      local v = backing[key]
+      if v ~= nil then return v end
+      return oldMeta.__index(t, key)
+    end,
+    __newindex = function(t, key, value)
+      if protectedKeys[key] then return end
+      realRS(t, key, value)
+    end,
+  })
+  realRS(env, "rawset", function(t, k, v)
+    if t == env and protectedKeys[k] then return t end
+    return realRS(t, k, v)
+  end)
+  realRS(env, "rawget", function(t, k)
+    local v = rawget(t, k)
+    if v == nil and t == env then
+      return backing[k]
+    end
+    return v
+  end)
+end
+
 local loaderBody = pages[loaderUrl]
 if not loaderBody then
   finish("loader page missing")
